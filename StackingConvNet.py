@@ -1,5 +1,5 @@
 import numpy as np
-import os, configparser, ast
+import os, configparser, ast, math
 import _pickle as pickle
 import cv2 as cv
 import tensorflow as tf
@@ -45,14 +45,22 @@ class StackingConvNet:
         # Check if the feature map function is decided
         assert self.get_featureMaps is not None
 
+        # Add an extra batch dimension if there is no batch dimension in the input data
+        if len(input_features.shape) < 3:
+            input_features = np.expand_dims(input_features, axis=0)
+
         # Set current input features to the function input
         current_input = input_features
 
         # Iterate over the layers of the network
         kernels = []
         for layer, n_current_featureMaps in enumerate(n_feature_maps):
+            # Print a message
+            print('\n*****\nStarting layer ' + str(layer + 1))
+
             # Get patches of the previous layer
             patches = self.get_patches(kernel_sizes[layer], stride, current_input, layer)
+            print('Patches generated')
 
             # Compute the new feature maps from the current feature maps
             current_kernels = []
@@ -61,18 +69,26 @@ class StackingConvNet:
                 # Get kernels first
                 kernels_temp = self.get_featureMaps(n_feature_maps[layer], patches_of_kernel)
                 current_kernels.append(kernels_temp)
+                print('Feature maps of kernel size #' + str(kernelSize + 1) + ' computed')
 
                 # Convolve the input feature maps with the kernels to obtain the new feature maps
-                current_input = np.expand_dims(current_input, axis=-1)
+                current_input = np.expand_dims(current_input, axis=3)
                 filter = np.expand_dims(kernels_temp, axis=2)
                 layer_temp = tf.nn.conv2d(input=current_input, filters=filter, strides=stride, padding='SAME')
+                print('Convolution done')
 
                 # Do 2D max pooling
                 layer_temp = tf.nn.max_pool(input=layer_temp, ksize=kernel_sizes[layer][kernelSize], strides=stride,
                                             padding='SAME')
+                print('Max pooling done')
+
+                # Reshape the 4D array to the desired 3D ([batch, height, width, feature_channels] to [batch * feature_channels, height, width])
+                layer_temp = np.swapaxes(np.array(layer_temp), 2, 3)
+                layer_temp = np.swapaxes(layer_temp, 1, 2)
+                layer_temp = np.reshape(layer_temp, (layer_temp.shape[0] * layer_temp.shape[1], layer_temp.shape[2], layer_temp.shape[3]))
 
                 # Add the layer obtained for the current kernel sizes to the list of current layers
-                current_layer.append(np.squeeze(np.array(layer_temp)))
+                current_layer = np.append(current_layer, layer_temp, axis=0)
 
             # Set the current layer as the next input
             current_input = current_layer
@@ -95,6 +111,7 @@ class StackingConvNet:
             features_maps = np.reshape(features_maps, shape_)
 
         # Iterate over all kernel sizes
+        generate_patches = False
         pool_of_patches = []
         for kernel in kernel_sizes:
             # Extract the size in each dimension
@@ -102,12 +119,16 @@ class StackingConvNet:
 
             # Load extracted patches if they exist and enabled (without any failure in loading so far)
             if self.cfg["use_extracted_patches"] and (not self.patchLoadFailed):
-                address = './Patches/layer' + str(layer_no) + '_' + str(kernel_dim1) + "x" + str(kernel_dim2)
+                address = './Patches/layer' + str(layer_no) + '_' + str(kernel_dim1) + "x" + str(kernel_dim2) + '.npy'
                 if os.path.exists(address):
                     featureMap_patches = np.load(address)
                 else:
                     self.patchLoadFailed = True
+                    generate_patches = True
             else:
+                generate_patches = True
+
+            if generate_patches:
                 # Scan all the possible patch positions and add them to a numpy array
                 featureMap_patches = np.zeros((0, kernel_dim1, kernel_dim2))
                 range_dim1 = features_maps.shape[1] - kernel_dim1 + 1
@@ -136,7 +157,7 @@ class StackingConvNet:
         """
 
         # Create the address to the dataset file
-        filepath = os.path.join(os.getcwd(), '/Datasets/', datsetName)
+        filepath = os.path.join('./Datasets/', datsetName)
 
         # Check the file path
         if not os.path.exists(filepath):
@@ -148,6 +169,7 @@ class StackingConvNet:
             dataset = pickle.load(dataset_file)
 
         # Separate input data and output labels
+        dataset[0] = np.reshape(dataset[0], (dataset[0].shape[0], int(math.sqrt(dataset[0].shape[1])), int(math.sqrt(dataset[0].shape[1]))))
         self.Data = dataset[0]
         self.Labels = dataset[1]
 
