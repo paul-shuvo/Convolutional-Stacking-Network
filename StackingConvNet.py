@@ -58,14 +58,14 @@ class StackingConvNet:
 
         # Train kernels
         kernels = self.train_kernels(self.cfg["n_feature_maps"], self.Data, self.cfg["kernel_sizes"],
-                                     self.cfg["stride"], self.cfg["pooling_stride"])
+                                     self.cfg["stride"], self.cfg["pooling_stride"], self.cfg["batch_size"])
 
         # Save the kernels to a file
         with open('./Model/Kernels.pckl', 'wb') as kernel_file:
             pickle.dump(kernels, kernel_file)
 
     # **********
-    def train_kernels(self, n_feature_maps, input_features, kernel_sizes, stride, pooling_stride, n_samples=None):
+    def train_kernels(self, n_feature_maps, input_features, kernel_sizes, stride, pooling_stride, batch_size, n_samples=None):
         """
         Function to get kernels computed form input feature maps/images.
         :param n_feature_maps: [number of features in each layer]
@@ -123,7 +123,7 @@ class StackingConvNet:
                     filter_ = np.expand_dims(kernels_temp, axis=2)
 
                     # Divide the batch to make it feasible to run with Tensorflow (prevent GPU memory overflow)
-                    tf_batch_size = 20000
+                    tf_batch_size = batch_size
                     layer_split = []
                     batch_left = current_input_expanded.shape[0]
                     while batch_left > 0:
@@ -253,3 +253,4 @@ class StackingConvNet:
         self.cfg["n_feature_maps"] = ast.literal_eval(config_parser.get(configSection, "n_feature_maps"))
         self.cfg["use_extracted_patches"] = config_parser.getboolean(configSection, "use_extracted_patches")
         self.cfg["pooling_stride"] = ast.literal_eval(config_parser.get(configSection, "pooling_stride"))
+        self.cfg["batch_size"] = config_parser.getint(configSection, "batch_size")
