@@ -8,6 +8,8 @@ class PCA_Net(StackingConvNet):
     def __init__(self, cfg_name, configSection="DEFAULT"):
         """
         Constructor function.
+        :param cfg_name: Configuration file string
+        :param configSection: Configuration section string
         """
 
         # Explicitly call the parent class' constructor
@@ -20,11 +22,14 @@ class PCA_Net(StackingConvNet):
     def get_PCA(self, n_components, feature_patches):
         """
         Function to compute Principal Component Analysis (PCA) of input patches.
-        The output components array has the shape [height, width, n_components].
+        :param n_components: Number of requested PCA components (integer)
+        :param feature_patches: Input feature patches to compute PCA on them [patches, height, width].
+        Warning: This function modifies the feature_patches argument!
+        :return: PCA components (eigenvectors) array [height, width, n_components].
         """
 
         # Define an instance of PCA dimensionality reduction
-        pca = PCA(n_components)
+        pca = PCA(n_components=n_components, copy=False)
 
         # Reshape the the input data to a 2D array (an array of 1D input data)
         feature_patches_shape = feature_patches.shape
