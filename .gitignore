@@ -3,3 +3,7 @@ env/
 .idea/
 *.npy
 *.pckl
+*.pyc
+.pydevproject
+.project
+
