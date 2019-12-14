@@ -51,14 +51,14 @@ class StackingConvNet:
         """
 
         # Load the input dataset
-        samples, _, self.test_samples, _ = self.load_dataset(dataset_name=self.cfg["dataset_name"],
-                                                             n_samples=self.cfg["n_samples"],
-                                                             test_set_ratio=self.cfg["test_set_ratio"])
-        del _
+        self.train_samples, self.train_labels, self.test_samples, self.test_labels = self.load_dataset(
+            dataset_name=self.cfg["dataset_name"],
+            n_samples=self.cfg["n_samples"],
+            test_set_ratio=self.cfg["test_set_ratio"])
 
         # Train kernels
         self.feature_extractors = self.train_conv_net(n_feature_maps=self.cfg["n_feature_maps"],
-                                                      input_features=samples,
+                                                      input_features=self.train_samples,
                                                       kernel_sizes=self.cfg["kernel_sizes"],
                                                       stride=self.cfg["stride"],
                                                       pooling_stride=self.cfg["pooling_stride"],
@@ -77,8 +77,22 @@ class StackingConvNet:
             pickle.dump(self.feature_extractors, feature_extractor_file)
 
         # Save the network settings to a file
-        with open('./Model/' + self.cfg["convolutional_network_settings_filename"] + '.pckl', 'wb') as network_settings_file:
+        with open('./Model/' + self.cfg["convolutional_network_settings_filename"] + '.pckl',
+                  'wb') as network_settings_file:
             pickle.dump(self.network_settings, network_settings_file)
+
+        # Save the raw test data
+        self.save_dataset(self.test_samples, self.test_labels, './Datasets/Test_Data/Test_Set')
+
+        # Get the output feature maps for the training and test data
+        training_features = self.infer(self.train_samples, self.feature_extractors, self.network_settings,
+                                       self.cfg["kernel_mode"])
+        test_features = self.infer(self.test_samples, self.feature_extractors, self.network_settings,
+                                   self.cfg["kernel_mode"])
+
+        # Save datasets with labels as output and obtained features as input
+        self.save_dataset(training_features, self.train_labels, './Datasets/Converted_Datasets/Converted_Training_Set')
+        self.save_dataset(test_features, self.test_labels, './Datasets/Converted_Datasets/Converted_Test_Set')
 
     # **********
     def infer(self, images, feature_extractors, network_settings, kernel_mode):
@@ -129,11 +143,12 @@ class StackingConvNet:
                         kernel_size_no += 1
 
                     # Get patches of the previous layer
-                    patches_of_kernel = self.get_patches(kernel_size=network_settings['kernel_sizes'][layer][kernel_size_no],
-                                                         stride=network_settings['stride'][layer],
-                                                         features_maps=current_input[channel],
-                                                         zero_pad=network_settings['zero_pad'],
-                                                         training_mode=False)
+                    patches_of_kernel = self.get_patches(
+                        kernel_size=network_settings['kernel_sizes'][layer][kernel_size_no],
+                        stride=network_settings['stride'][layer],
+                        features_maps=current_input[channel],
+                        zero_pad=network_settings['zero_pad'],
+                        training_mode=False)
 
                     extracted_features = self.extract_features(pca=channel_feature_extractors,
                                                                feature_patches=patches_of_kernel,
@@ -174,9 +189,11 @@ class StackingConvNet:
             current_input = current_layer
 
         # Make a 2D array out of the computed feature maps [batch, 1D feature vector]
-        print('\nInference in stacking convolutional network done.\nOutput shape before flattening: ' + str(current_input.shape))
+        print('\nInference in stacking convolutional network done.\nOutput shape before flattening: ' + str(
+            current_input.shape))
         current_input = np.swapaxes(current_input, 0, 1)
-        feature_vector = np.reshape(current_input, (current_input.shape[0], current_input.shape[1] * current_input.shape[2] * current_input.shape[3]))
+        feature_vector = np.reshape(current_input, (
+        current_input.shape[0], current_input.shape[1] * current_input.shape[2] * current_input.shape[3]))
 
         # Print a message to report the output shape
         print('Output shape: ' + str(feature_vector.shape))
@@ -354,7 +371,8 @@ class StackingConvNet:
             # Zero pad if enabled
             if zero_pad:
                 features_maps = np.pad(array=features_maps,
-                                       pad_width=((0, 0), (int(kernel_dim1 / 2), int(kernel_dim1 / 2)), (int(kernel_dim2 / 2), int(kernel_dim2 / 2))),
+                                       pad_width=((0, 0), (int(kernel_dim1 / 2), int(kernel_dim1 / 2)),
+                                                  (int(kernel_dim2 / 2), int(kernel_dim2 / 2))),
                                        constant_values=0)
 
             # Scan all the possible patch positions and add them to a numpy array
@@ -410,6 +428,22 @@ class StackingConvNet:
         return processed_batch
 
     # **********
+    def save_dataset(self, samples, labels, path):
+        """
+        Function to save the input samples and corresponding labels in a file
+        :param samples: Input samples (numpy array)
+        :param labels: Labels (numpy array)
+        :param path: The complete path, including the filename, but without any extension, of the file to be created
+        """
+
+        # Create the list structure of a dataset
+        dataset = [samples, labels]
+
+        # Save the dataset file in a pickle file
+        with open(path + '.pckl', 'wb') as dataset_file:
+            pickle.dump(dataset, dataset_file)
+
+    # **********
     def load_dataset(self, dataset_name, n_samples, test_set_ratio):
         """
         Function to load a dataset from a file.
@@ -449,8 +483,8 @@ class StackingConvNet:
         training_data_no = int((1 - test_set_ratio) * dataset[1].shape[0])
         training_samples = dataset[0][: training_data_no]
         training_labels = dataset[1][: training_data_no]
-        test_samples = dataset[0][training_data_no: ]
-        test_labels = dataset[1][training_data_no: ]
+        test_samples = dataset[0][training_data_no:]
+        test_labels = dataset[1][training_data_no:]
 
         return training_samples, training_labels, test_samples, test_labels
 
@@ -488,5 +522,6 @@ class StackingConvNet:
         self.cfg["kernel"] = config_parser.get(config_section, "kernel")
         self.cfg["zero_pad"] = config_parser.getboolean(config_section, "zero_pad")
         self.cfg["convolutional_model_filename"] = config_parser.get(config_section, "convolutional_model_filename")
-        self.cfg["convolutional_network_settings_filename"] = config_parser.get(config_section, "convolutional_network_settings_filename")
+        self.cfg["convolutional_network_settings_filename"] = config_parser.get(config_section,
+                                                                                "convolutional_network_settings_filename")
         self.cfg["test_set_ratio"] = config_parser.getfloat(config_section, "test_set_ratio")
