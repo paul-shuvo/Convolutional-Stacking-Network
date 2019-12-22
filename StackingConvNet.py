@@ -54,7 +54,7 @@ class StackingConvNet:
         self.train_samples, self.train_labels, self.test_samples, self.test_labels = self.load_dataset(
             dataset_name=self.cfg["dataset_name"],
             n_samples=self.cfg["n_samples"],
-            test_set_ratio=self.cfg["test_set_ratio"])
+            test_set_size=self.cfg["test_set_size"])
 
         # Train kernels
         self.feature_extractors = self.train_conv_net(n_feature_maps=self.cfg["n_feature_maps"],
@@ -444,12 +444,12 @@ class StackingConvNet:
             pickle.dump(dataset, dataset_file)
 
     # **********
-    def load_dataset(self, dataset_name, n_samples, test_set_ratio):
+    def load_dataset(self, dataset_name, n_samples, test_set_size):
         """
         Function to load a dataset from a file.
         :param dataset_name: Dataset name string
         :param n_samples: Number of samples to be used for training and testing
-        :param test_set_ratio: Ratio of test samples in the dataset.
+        :param test_set_size: Number of test samples in the dataset.
         :return: Returns training samples, training labels, test samples, test labels
         """
 
@@ -477,10 +477,13 @@ class StackingConvNet:
         assert dataset[0].shape[0] == dataset[1].shape[0], \
             'Mismatch in the number of samples and labels in the dataset.'
 
+        # Check if the requested test set size is valid
+        assert 0 <= test_set_size < dataset[1].shape[0], "Test set size of " + test_set_size + " not valid"
+
         # Separate training and test data
         dataset[0] = dataset[0][: n_samples]
         dataset[1] = dataset[1][: n_samples]
-        training_data_no = int((1 - test_set_ratio) * dataset[1].shape[0])
+        training_data_no = int(dataset[1].shape[0] - test_set_size)
         training_samples = dataset[0][: training_data_no]
         training_labels = dataset[1][: training_data_no]
         test_samples = dataset[0][training_data_no:]
@@ -524,4 +527,4 @@ class StackingConvNet:
         self.cfg["convolutional_model_filename"] = config_parser.get(config_section, "convolutional_model_filename")
         self.cfg["convolutional_network_settings_filename"] = config_parser.get(config_section,
                                                                                 "convolutional_network_settings_filename")
-        self.cfg["test_set_ratio"] = config_parser.getfloat(config_section, "test_set_ratio")
+        self.cfg["test_set_size"] = config_parser.getfloat(config_section, "test_set_size")
