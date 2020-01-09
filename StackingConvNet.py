@@ -150,7 +150,7 @@ class StackingConvNet:
                         zero_pad=network_settings['zero_pad'],
                         training_mode=False)
 
-                    extracted_features = self.extract_features(pca=channel_feature_extractors,
+                    extracted_features = self.extract_features(model=channel_feature_extractors,
                                                                feature_patches=patches_of_kernel,
                                                                zero_pad=network_settings['zero_pad'],
                                                                feature_map_shape=current_input[channel].shape,
@@ -522,7 +522,8 @@ class StackingConvNet:
         self.cfg["batch_size"] = config_parser.getint(config_section, "batch_size")
         self.cfg["n_samples"] = config_parser.getint(config_section, "n_samples")
         self.cfg["kernel_mode"] = config_parser.getboolean(config_section, "kernel_mode")
-        self.cfg["kernel"] = config_parser.get(config_section, "kernel")
+        self.cfg["kernelPCA_kernel_type"] = config_parser.get(config_section, "kernelPCA_kernel_type")
+        self.cfg["max_iteration_ICA"] = config_parser.getint(config_section, "max_iteration_ICA")
         self.cfg["zero_pad"] = config_parser.getboolean(config_section, "zero_pad")
         self.cfg["convolutional_model_filename"] = config_parser.get(config_section, "convolutional_model_filename")
         self.cfg["convolutional_network_settings_filename"] = config_parser.get(config_section,
