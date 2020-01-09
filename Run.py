@@ -1,7 +1,9 @@
-from PCA_Net import PCA_Net, Kernel_PCA_Net
+from FeatureExtractorNet import *
 
-# Define an instance of stacking PCA convolutional network
-pcaNet = PCA_Net('Config.cfg', config_section="DEFAULT")
+# Define an instance of stacking convolutional network
+# convNet = PCA_Net('Config.cfg', config_section="DEFAULT")
+# convNet = Kernel_PCA_Net('Config.cfg', config_section="DEFAULT")
+convNet = ICA_Net('Config.cfg', config_section="DEFAULT")
 
 # Train the stacking convolutional network
-pcaNet.train()
+convNet.train()
