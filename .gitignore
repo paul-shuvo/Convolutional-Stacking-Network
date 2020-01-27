@@ -8,3 +8,4 @@ env/
 .project
 
 /Training/test_code.py
+/Training/runs/
