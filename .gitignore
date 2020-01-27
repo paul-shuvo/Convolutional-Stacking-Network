@@ -7,3 +7,4 @@ env/
 .pydevproject
 .project
 
+/Training/test_code.py
