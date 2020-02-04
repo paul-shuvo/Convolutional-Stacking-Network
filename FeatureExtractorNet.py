@@ -21,11 +21,12 @@ class PCA_Net(StackingConvNet):
         self.extract_features = self.extract_PCA_features
 
     # **********
-    def extract_PCA_features(self, model, feature_patches, zero_pad, feature_map_shape, stride):
+    def extract_PCA_features(self, model, feature_patches, components, zero_pad, feature_map_shape, stride):
         """
         Function to extract features using Principal Component Analysis (PCA).
         :param model: A trained scikit-learn PCA object
         :param feature_patches: Input feature patches to compute PCA on them [patches, height, width]
+        :param components: The requested PCA components (list)
         :param zero_pad: Boolean parameter to indicate if feature maps are zero-padded
         :param feature_map_shape: Shape of the feature map [batch, height, width]
         :param stride: Network stride
@@ -44,13 +45,16 @@ class PCA_Net(StackingConvNet):
         extracted_features = reshape_feature_vector(extracted_features, feature_patches_shape, zero_pad,
                                                     feature_map_shape, stride)
 
+        # Extract the requested components
+        extracted_features = extracted_features[:, :, :, components]
+
         return extracted_features
 
     # **********
-    def train_PCA(self, n_components, feature_patches, kernel_mode, zero_pad, feature_map_shape=None, stride=None):
+    def train_PCA(self, components, feature_patches, kernel_mode, zero_pad, feature_map_shape=None, stride=None):
         """
         Function to compute Principal Component Analysis (PCA) of input patches.
-        :param n_components: Number of requested PCA components (integer)
+        :param components: The requested PCA components (list)
         :param feature_patches: Input feature patches to compute PCA on them [patches, height, width]
         Warning: This function modifies the feature_patches argument!
         :param kernel_mode: If enabled PCA components are returned instead of the trained extractors themselves
@@ -62,7 +66,7 @@ class PCA_Net(StackingConvNet):
         """
 
         # Define an instance of PCA dimensionality reduction
-        pca = PCA(n_components=n_components, copy=False)
+        pca = PCA(n_components=max(components) + 1, copy=False)
 
         # Reshape the the input data to a 2D array (an array of 1D input data)
         feature_patches_shape = feature_patches.shape
@@ -74,11 +78,12 @@ class PCA_Net(StackingConvNet):
             pca.fit(feature_patches)
 
             # Get and reshape components
-            components = pca.components_
-            components = np.swapaxes(components, 0, 1)
-            components = np.reshape(components,
-                                    (feature_patches_shape[1], feature_patches_shape[2], components.shape[1]))
-            return components
+            pca_components = pca.components_
+            pca_components = np.swapaxes(pca_components, 0, 1)
+            pca_components = np.reshape(pca_components,
+                                        (feature_patches_shape[1], feature_patches_shape[2], pca_components.shape[1]))
+
+            return pca_components[:, :, components]
         else:
             # Fit the PCA model and extract the new feature maps
             extracted_features = pca.fit_transform(feature_patches)
@@ -86,6 +91,9 @@ class PCA_Net(StackingConvNet):
             # Reshape the extracted patch from [batch * height * width, channel] to [batch, height, width, channel]
             extracted_features = reshape_feature_vector(extracted_features, feature_patches_shape, zero_pad,
                                                         feature_map_shape, stride)
+
+            # Extract the requested components
+            extracted_features = extracted_features[:, :, :, components]
 
             return pca, extracted_features
 
@@ -111,11 +119,12 @@ class Kernel_PCA_Net(StackingConvNet):
         assert not self.cfg["kernel_mode"], 'Kernel mode is not supported for Kernel PCA.'
 
     # **********
-    def extract_KPCA_features(self, model, feature_patches, zero_pad, feature_map_shape, stride):
+    def extract_KPCA_features(self, model, feature_patches, components, zero_pad, feature_map_shape, stride):
         """
         Function to extract features using Kernel Principal Component Analysis (KPCA).
         :param model: A trained scikit-learn kernel PCA object
         :param feature_patches: Input feature patches to compute kernel PCA on them [patches, height, width]
+        :param components: The requested Kernel PCA components (list)
         :param zero_pad: Boolean parameter to indicate if feature maps are zero-padded
         :param feature_map_shape: Shape of the feature map [batch, height, width]
         :param stride: Network stride
@@ -134,13 +143,16 @@ class Kernel_PCA_Net(StackingConvNet):
         extracted_features = reshape_feature_vector(extracted_features, feature_patches_shape, zero_pad,
                                                     feature_map_shape, stride)
 
+        # Extract the requested components
+        extracted_features = extracted_features[:, :, :, components]
+
         return extracted_features
 
     # **********
-    def train_Kernel_PCA(self, n_components, feature_patches, zero_pad, feature_map_shape, stride, ** kwargs):
+    def train_Kernel_PCA(self, components, feature_patches, zero_pad, feature_map_shape, stride, ** kwargs):
         """
         Function to compute Kernel Principal Component Analysis (KPCA) of input patches.
-        :param n_components: Number of requested PCA components (integer)
+        :param components: The requested Kernel PCA components (list)
         :param feature_patches: Input feature patches to compute PCA on them [patches, height, width].
         Warning: This function modifies the feature_patches argument!
         :param zero_pad: Boolean parameter to indicate if feature maps are zero-padded
@@ -150,7 +162,7 @@ class Kernel_PCA_Net(StackingConvNet):
         """
 
         # Define an instance of Kernel PCA dimensionality reduction
-        kpca = KernelPCA(n_components=n_components, copy_X=False, n_jobs=-1, kernel=self.cfg["kernelPCA_kernel_type"])
+        kpca = KernelPCA(n_components=max(components) + 1, copy_X=False, n_jobs=-1, kernel=self.cfg["kernelPCA_kernel_type"])
 
         # Reshape the the input data to a 2D array (an array of 1D input data)
         feature_patches_shape = feature_patches.shape
@@ -163,6 +175,9 @@ class Kernel_PCA_Net(StackingConvNet):
         # Reshape the extracted patch from [batch * height * width, channel] to [batch, height, width, channel]
         extracted_features = reshape_feature_vector(extracted_features, feature_patches_shape, zero_pad,
                                                     feature_map_shape, stride)
+
+        # Extract the requested components
+        extracted_features = extracted_features[:, :, :, components]
 
         return kpca, extracted_features
 
@@ -188,11 +203,12 @@ class ICA_Net(StackingConvNet):
         assert not self.cfg["kernel_mode"], 'Kernel mode is not supported for ICA.'
 
     # **********
-    def extract_ICA_features(self, model, feature_patches, zero_pad, feature_map_shape, stride):
+    def extract_ICA_features(self, model, feature_patches, components, zero_pad, feature_map_shape, stride):
         """
         Function to extract features using Independent Component Analysis (ICA).
         :param model: A trained scikit-learn ICA object
         :param feature_patches: Input feature patches to compute ICA on them [patches, height, width]
+        :param components: The requested ICA components (list)
         :param zero_pad: Boolean parameter to indicate if feature maps are zero-padded
         :param feature_map_shape: Shape of the feature map [batch, height, width]
         :param stride: Network stride
@@ -211,13 +227,16 @@ class ICA_Net(StackingConvNet):
         extracted_features = reshape_feature_vector(extracted_features, feature_patches_shape, zero_pad,
                                                     feature_map_shape, stride)
 
+        # Extract the requested components
+        extracted_features = extracted_features[:, :, :, components]
+
         return extracted_features
 
     # **********
-    def train_ICA(self, n_components, feature_patches, zero_pad, feature_map_shape, stride, **kwargs):
+    def train_ICA(self, components, feature_patches, zero_pad, feature_map_shape, stride, **kwargs):
         """
         Function to compute Independent Component Analysis (ICA) of input patches.
-        :param n_components: Number of requested ICA components (integer)
+        :param components: The requested ICA components (list)
         :param feature_patches: Input feature patches to compute ICA on them [patches, height, width]
         :param zero_pad: Boolean parameter to indicate if feature maps are zero-padded
         :param feature_map_shape: Shape of the feature map [batch, height, width]
@@ -226,7 +245,7 @@ class ICA_Net(StackingConvNet):
         """
 
         # Define an instance of ICA dimensionality reduction
-        ica = FastICA(n_components=n_components, max_iter=self.cfg["max_iteration_ICA"])
+        ica = FastICA(n_components=max(components) + 1, max_iter=self.cfg["max_iteration_ICA"])
 
         # Reshape the the input data to a 2D array (an array of 1D input data)
         feature_patches_shape = feature_patches.shape
@@ -239,6 +258,9 @@ class ICA_Net(StackingConvNet):
         # Reshape the extracted patch from [batch * height * width, channel] to [batch, height, width, channel]
         extracted_features = reshape_feature_vector(extracted_features, feature_patches_shape, zero_pad,
                                                     feature_map_shape, stride)
+
+        # Extract the requested components
+        extracted_features = extracted_features[:, :, :, components]
 
         return ica, extracted_features
 
