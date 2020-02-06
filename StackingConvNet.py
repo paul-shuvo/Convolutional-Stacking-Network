@@ -18,6 +18,8 @@ class StackingConvNet:
         # Load configurations
         self.load_config(cfg_name, config_section)
 
+        #Check
+
         # Set some initial values
         self.train_feature_extractors = None
         self.extract_features = None
@@ -74,13 +76,15 @@ class StackingConvNet:
                                                       batch_size=self.cfg["batch_size"],
                                                       kernel_mode=self.cfg["kernel_mode"],
                                                       zero_pad=self.cfg["zero_pad"],
-                                                      components=self.components_in_layers)
+                                                      components=self.components_in_layers,
+                                                      feature_extractor_types=self.cfg["feature_extractor_types"])
 
         # Construct the network settings dictionary
         self.network_settings = {'stride': self.cfg["stride"],
                                  'pooling_stride': self.cfg["pooling_stride"],
                                  'kernel_sizes': self.cfg["kernel_sizes"],
-                                 'zero_pad': self.cfg["zero_pad"]}
+                                 'zero_pad': self.cfg["zero_pad"],
+                                 'feature_extractor_types': self.cfg["feature_extractor_types"]}
 
         # Save the kernels to a file
         with open('./Model/' + self.cfg["convolutional_model_filename"] + '.pckl', 'wb') as feature_extractor_file:
@@ -167,12 +171,13 @@ class StackingConvNet:
                         zero_pad=network_settings['zero_pad'],
                         training_mode=False)
 
-                    extracted_features = self.extract_features(model=channel_feature_extractors,
-                                                               feature_patches=patches_of_kernel,
-                                                               components=components[layer],
-                                                               zero_pad=network_settings['zero_pad'],
-                                                               feature_map_shape=current_input[channel].shape,
-                                                               stride=network_settings['stride'][layer])
+                    extracted_features = self.extract_features[network_settings['feature_extractor_types'][layer]](
+                        model=channel_feature_extractors,
+                        feature_patches=patches_of_kernel,
+                        components=components[layer],
+                        zero_pad=network_settings['zero_pad'],
+                        feature_map_shape=current_input[channel].shape,
+                        stride=network_settings['stride'][layer])
 
                 # Prepare data shapes for processing with Tensorflow
                 if kernel_mode:
@@ -220,7 +225,7 @@ class StackingConvNet:
 
     # **********
     def train_conv_net(self, n_feature_maps, input_features, kernel_sizes, stride, pooling_stride, batch_size,
-                       kernel_mode, zero_pad, components):
+                       kernel_mode, zero_pad, components, feature_extractor_types):
         """
         Function to get feature extractors trained from input feature maps/images.
         :param n_feature_maps: [number of features in each layer]
@@ -233,16 +238,13 @@ class StackingConvNet:
         :param kernel_mode: If enabled kernels are saved and processed instead of feature extractors
         :param zero_pad: Boolean parameter to indicate if feature maps should be zero-padded
         :param components: List of lists of components to be used in each layer [ [components in each layer] for number of layers]
+        :param feature_extractor_types: List of string that defines the type of feature extractors (PCA, ICA, etc.) in each layer
         :return: List of lists of feature extractors/kernels
         (e.g. [[feature extractors/kernels of layer 1], [feature extractors/kernels of layer 2]])
         """
 
         # Check if the feature map function is decided
         assert self.train_feature_extractors is not None, 'Feature extractor function is not defined.'
-
-        # Check if the number of requested components is equal to the list of components for each layer
-        assert n_feature_maps == [len(layer_components) for layer_components in components], \
-            'Function train_conv_net requires the input options n_feature_maps and components match.'
 
         # Add an extra batch dimension if there is no batch dimension in the input data
         if len(input_features.shape) < 3:
@@ -277,15 +279,17 @@ class StackingConvNet:
 
                     # Train feature reduction
                     if kernel_mode:  # Get kernels
-                        kernels_temp = self.train_feature_extractors(components=components[layer],
-                                                                     feature_patches=patches_of_kernel,
-                                                                     kernel_mode=kernel_mode,
-                                                                     zero_pad=zero_pad)
+                        kernels_temp = self.train_feature_extractors[feature_extractor_types[layer]](
+                            components=components[layer],
+                            feature_patches=patches_of_kernel,
+                            kernel_mode=kernel_mode,
+                            zero_pad=zero_pad)
                         current_feature_extractors.append(kernels_temp)
                         print('Feature maps of kernel size #' + str(kernelSize_no + 1) + ' computed. Shape: ' +
                               str(kernels_temp.shape))
+
                     else:  # Get feature extractors and extracted features
-                        feature_extractors_temp, extracted_features = self.train_feature_extractors(
+                        feature_extractors_temp, extracted_features = self.train_feature_extractors[feature_extractor_types[layer]](
                             components=components[layer],
                             feature_patches=patches_of_kernel,
                             kernel_mode=kernel_mode,
@@ -515,6 +519,20 @@ class StackingConvNet:
         return training_samples, training_labels, test_samples, test_labels
 
     # **********
+    def check_matching_config(self):
+        """
+        Function to check if tyhe input configuration match together.
+        """
+
+        # Check if the number of requested components is equal to the list of components for each layer
+        assert (len(self.cfg['components']) == 0) or (self.cfg['n_feature_maps'] == [len(layer_components) for layer_components in self.cfg['components']]), \
+            'Function train_conv_net requires the input options n_feature_maps and components match.'
+
+        # Check the number of layers are the same in the input configurations
+        assert len(self.cfg['n_feature_maps']) == len(self.cfg['kernel_sizes']) == len(self.cfg['stride']) == len(self.cfg['pooling_stride']) == len(self.cfg['feature_extractor_types']), \
+            'The following input configurations must have the equal length:\n- n_feature_maps\n- kernel_sizes\n- stride\n- pooling_stride\n- feature_extractor_types'
+
+    # **********
     def load_config(self, config_file, config_section="DEFAULT"):
         """
         Function to load the configurations from a file.
@@ -553,3 +571,7 @@ class StackingConvNet:
                                                                                 "convolutional_network_settings_filename")
         self.cfg["test_set_size"] = config_parser.getfloat(config_section, "test_set_size")
         self.cfg["components"] = ast.literal_eval(config_parser.get(config_section, "components"))
+        self.cfg["feature_extractor_types"] = ast.literal_eval(config_parser.get(config_section, "feature_extractor_types"))
+
+        # Check if the input configuration match together
+        self.check_matching_config()

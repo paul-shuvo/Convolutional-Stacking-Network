@@ -4,7 +4,7 @@ import numpy as np
 
 
 # *******************
-class PCA_Net(StackingConvNet):
+class FeatureExtractorNet(StackingConvNet):
     # **********
     def __init__(self, cfg_name, config_section="DEFAULT"):
         """
@@ -16,9 +16,9 @@ class PCA_Net(StackingConvNet):
         # Explicitly call the parent class' constructor
         super().__init__(cfg_name, config_section)
 
-        # Set the feature map generator functions to PCA
-        self.train_feature_extractors = self.train_PCA
-        self.extract_features = self.extract_PCA_features
+        # Set the feature map generator functions
+        self.train_feature_extractors = {'PCA': self.train_PCA, 'Kernel_PCA': self.train_Kernel_PCA, 'ICA': self.train_ICA}
+        self.extract_features = {'PCA': self.extract_PCA_features, 'Kernel_PCA': self.extract_KPCA_features, 'ICA': self.extract_ICA_features}
 
     # **********
     def extract_PCA_features(self, model, feature_patches, components, zero_pad, feature_map_shape, stride):
@@ -97,27 +97,6 @@ class PCA_Net(StackingConvNet):
 
             return pca, extracted_features
 
-
-# *******************
-class Kernel_PCA_Net(StackingConvNet):
-    # **********
-    def __init__(self, cfg_name, config_section="DEFAULT"):
-        """
-        Constructor function.
-        :param cfg_name: Configuration file string
-        :param config_section: Configuration section string
-        """
-
-        # Explicitly call the parent class' constructor
-        super().__init__(cfg_name, config_section)
-
-        # Set the feature map generator functions to kernel PCA
-        self.train_feature_extractors = self.train_Kernel_PCA
-        self.extract_features = self.extract_KPCA_features
-
-        # Check if kernel mode is not enabled while kernel PCA is the function to extract features.
-        assert not self.cfg["kernel_mode"], 'Kernel mode is not supported for Kernel PCA.'
-
     # **********
     def extract_KPCA_features(self, model, feature_patches, components, zero_pad, feature_map_shape, stride):
         """
@@ -130,6 +109,9 @@ class Kernel_PCA_Net(StackingConvNet):
         :param stride: Network stride
         :return: Extracted feature map [batch, height, width, channel]
         """
+
+        # Check if kernel mode is not enabled while kernel PCA is the function to extract features.
+        assert not self.cfg["kernel_mode"], 'Kernel mode is not supported for Kernel PCA.'
 
         # Reshape the the input data to a 2D array (an array of 1D input data)
         feature_patches_shape = feature_patches.shape
@@ -161,6 +143,9 @@ class Kernel_PCA_Net(StackingConvNet):
         :return: KPCA feature extractor (a single object).
         """
 
+        # Check if kernel mode is not enabled while kernel PCA is the function to extract features.
+        assert not self.cfg["kernel_mode"], 'Kernel mode is not supported for Kernel PCA.'
+
         # Define an instance of Kernel PCA dimensionality reduction
         kpca = KernelPCA(n_components=max(components) + 1, copy_X=False, n_jobs=-1, kernel=self.cfg["kernelPCA_kernel_type"])
 
@@ -181,27 +166,6 @@ class Kernel_PCA_Net(StackingConvNet):
 
         return kpca, extracted_features
 
-
-# *******************
-class ICA_Net(StackingConvNet):
-    # **********
-    def __init__(self, cfg_name, config_section="DEFAULT"):
-        """
-        Constructor function.
-        :param cfg_name: Configuration file string
-        :param config_section: Configuration section string
-        """
-
-        # Explicitly call the parent class' constructor
-        super().__init__(cfg_name, config_section)
-
-        # Set the feature map generator functions to ICA
-        self.train_feature_extractors = self.train_ICA
-        self.extract_features = self.extract_ICA_features
-
-        # Check if kernel mode is not enabled while ICA is the function to extract features.
-        assert not self.cfg["kernel_mode"], 'Kernel mode is not supported for ICA.'
-
     # **********
     def extract_ICA_features(self, model, feature_patches, components, zero_pad, feature_map_shape, stride):
         """
@@ -214,6 +178,9 @@ class ICA_Net(StackingConvNet):
         :param stride: Network stride
         :return: Extracted feature map [batch, height, width, channel]
         """
+
+        # Check if kernel mode is not enabled while ICA is the function to extract features.
+        assert not self.cfg["kernel_mode"], 'Kernel mode is not supported for ICA.'
 
         # Reshape the the input data to a 2D array (an array of 1D input data)
         feature_patches_shape = feature_patches.shape
@@ -243,6 +210,9 @@ class ICA_Net(StackingConvNet):
         :param stride: Stride used in generation of patches
         :return: ICA feature extractor (a single object) and extracted features [batch, height, width, channel].
         """
+
+        # Check if kernel mode is not enabled while ICA is the function to extract features.
+        assert not self.cfg["kernel_mode"], 'Kernel mode is not supported for ICA.'
 
         # Define an instance of ICA dimensionality reduction
         ica = FastICA(n_components=max(components) + 1, max_iter=self.cfg["max_iteration_ICA"])
