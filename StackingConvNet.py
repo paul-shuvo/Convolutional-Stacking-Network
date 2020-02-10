@@ -77,7 +77,8 @@ class StackingConvNet:
                                                       kernel_mode=self.cfg["kernel_mode"],
                                                       zero_pad=self.cfg["zero_pad"],
                                                       components=self.components_in_layers,
-                                                      feature_extractor_types=self.cfg["feature_extractor_types"])
+                                                      feature_extractor_types=self.cfg["feature_extractor_types"],
+                                                      save_patches=self.cfg["save_patches"])
 
         # Construct the network settings dictionary
         self.network_settings = {'stride': self.cfg["stride"],
@@ -225,7 +226,7 @@ class StackingConvNet:
 
     # **********
     def train_conv_net(self, n_feature_maps, input_features, kernel_sizes, stride, pooling_stride, batch_size,
-                       kernel_mode, zero_pad, components, feature_extractor_types):
+                       kernel_mode, zero_pad, components, feature_extractor_types, save_patches):
         """
         Function to get feature extractors trained from input feature maps/images.
         :param n_feature_maps: [number of features in each layer]
@@ -239,6 +240,7 @@ class StackingConvNet:
         :param zero_pad: Boolean parameter to indicate if feature maps should be zero-padded
         :param components: List of lists of components to be used in each layer [ [components in each layer] for number of layers]
         :param feature_extractor_types: List of string that defines the type of feature extractors (PCA, ICA, etc.) in each layer
+        :param save_patches: Boolean variable to enable saving patches on disk
         :return: List of lists of feature extractors/kernels
         (e.g. [[feature extractors/kernels of layer 1], [feature extractors/kernels of layer 2]])
         """
@@ -274,6 +276,7 @@ class StackingConvNet:
                                                          features_maps=current_input[channel],
                                                          zero_pad=zero_pad,
                                                          training_mode=True,
+                                                         save_patches=self.cfg['save_patches'],
                                                          layer_no=layer)
                     print('++\nPatches generated. Shape: ' + str(patches_of_kernel.shape))
 
@@ -353,7 +356,7 @@ class StackingConvNet:
         return feature_extractors
 
     # **********
-    def get_patches(self, kernel_size, stride, features_maps, zero_pad, training_mode, layer_no=None):
+    def get_patches(self, kernel_size, stride, features_maps, zero_pad, training_mode, save_patches=False, layer_no=None):
         """
         Function to gather patches by scanning kernels over input image/feature maps for all training samples.
         :param kernel_size: Size of kernel [x, y]
@@ -361,6 +364,7 @@ class StackingConvNet:
         :param features_maps: Batch of feature maps  to get their patches [batch, height, width]
         :param zero_pad: Boolean parameter to indicate if feature maps should be zero-padded before patch extraction
         :param training_mode: Boolean variable to enable training time actions
+        :param save_patches: Boolean variable to enable saving patches on disk
         :param layer_no: Layer number (integer)
         :return: stack of patches of feature maps [patches_per_featureMap * batch, height, width]
         """
@@ -412,7 +416,7 @@ class StackingConvNet:
                     self.featureMap_patches = np.append(self.featureMap_patches, current_patch, axis=0)
 
             # Write the current patches on a file
-            if training_mode:
+            if training_mode and save_patches:
                 np.save(address, self.featureMap_patches)
 
         return self.featureMap_patches
@@ -572,6 +576,7 @@ class StackingConvNet:
         self.cfg["test_set_size"] = config_parser.getfloat(config_section, "test_set_size")
         self.cfg["components"] = ast.literal_eval(config_parser.get(config_section, "components"))
         self.cfg["feature_extractor_types"] = ast.literal_eval(config_parser.get(config_section, "feature_extractor_types"))
+        self.cfg["save_patches"] = config_parser.getboolean(config_section, "save_patches")
 
         # Check if the input configuration match together
         self.check_matching_config()
