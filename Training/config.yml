@@ -1,29 +1,31 @@
 default:
   train_transformed_data: False
   use_tensorboard: True
+  fcn_config: [1024, 512, 256, 128, 64, 10]
   hyper_parameters:
     lr: 0.01
-    max_epoch: 200
-    checkpoint_step: 10
+    max_epoch: 400
+    checkpoint_step: 100
   dataset:
     sampler_ratio:
-      train: 0.6
+      train: 0.1
       validate: 0.2
-      test: 0.2
+      test: 0.7
     path:
       original:
         - D:\Programming Projects\python projects\EclecticNet\Datasets\Fashion-MNIST.pckl
       transformed:
-        - D:\Programming Projects\python projects\WCFK\Dataset\ICA\Converted_Training_Set.pckl
-        - D:\Programming Projects\python projects\WCFK\Dataset\ICA\Converted_Test_Set.pckl
+        - D:\Programming Projects\python projects\EclecticNet\Datasets\Converted_Datasets\Converted_Training_Set_36_1764_3x3_30k.pckl
+        - D:\Programming Projects\python projects\EclecticNet\Datasets\Converted_Datasets\Converted_Test_Set_36_1764_3x3_30k.pckl
     parameters:
       batch_size: 1000
       shuffle: True
     model:
       path: D:\Programming Projects\python projects\EclecticNet\Training
   feature_extractor_net_config:
-    n_feature_maps: [2, 2, 2, 2, 2, 2, 2]
-    kernel_sizes: [[[3,3]], [[3,3]], [[3, 3]], [[3,3]], [[3,3]], [[3,3]], [[3,3]]]
-    stride: [1, 1, 1, 1, 1, 1, 1]
-    pooling_stride: [0, 0, 2, 0, 2, 0, 2]
+    n_feature_maps: [2, 2, 2]
+    kernel_sizes: [[[5,5]], [[5,5]], [[5,5]]]
+    stride: [1, 1, 1]
+    pooling_stride: [0, 2, 2]
     zero_pad: True
+

@@ -5,6 +5,7 @@
 # TODO: Add optimizer, loss, metrics to model class
 # TODO: Add more comments
 # FIXME: Fix some naming of files and classes
+# FIXME: Make the sampling balanced between classes
 # FIXME: Fix the warning on the python file import i.e. 'train,py'
 
 # import libraries
@@ -53,6 +54,7 @@ if __name__ == '__main__':
     dataset_path = dataset_cfg['path']
     sampler_ratio = dataset_cfg['sampler_ratio']
     max_epochs = hyper_parameters['max_epoch']
+    fcn_config = cfg['fcn_config']
 
     # Convert the data to a general structure before
     # feeding to the model. If 'train_transformed_data'
@@ -67,13 +69,13 @@ if __name__ == '__main__':
             y_ = np.array([v.replace(',', '') for v in y_], dtype=np.float32)
         X = np.concatenate((X, X_), axis=0)
         y = np.concatenate((y, y_), axis=0)
-        model = models.FullyConnected5()
+        model = models.FCNCustom(X.shape[-1], fcn_config)
     else:
         with open(dataset_path['original'][0], 'rb') as f:
             X, y = pickle.load(f)
+            # X = np.divide(X, 255)
             y = np.array([v.replace(',', '') for v in y], dtype=np.float32)
-        ext_model = models.FullyConnected5()
-        model = models.FeatureExtractorConvNet(feature_extractor_net_cfg, ext_model)
+        model = models.FeatureExtractorConvNet(feature_extractor_net_cfg, fcn_config, device)
 
 
 
@@ -86,18 +88,26 @@ if __name__ == '__main__':
     num_testing_sample = int(total_samples * sampler_ratio['test'])
 
     train_idx, validate_idx, test_idx = data.random_split(X, [num_training_sample, num_validation_sample, num_testing_sample])
+    unique, counts = np.unique(y, return_counts=True)
+    print(dict(zip(unique, counts)))
     train = [X[train_idx.indices], y[train_idx.indices]]
     validate = [X[validate_idx.indices], y[validate_idx.indices]]
     test = [X[test_idx.indices], y[test_idx.indices]]
 
     if cfg['train_transformed_data']:
         train[0] = train[0].view(train[0].shape[0], -1)
+        unique, counts = np.unique(train[1], return_counts=True)
+        print(dict(zip(unique, counts)))
         validate[0] = validate[0].view(validate[0].shape[0], -1)
         test[0] = test[0].view(test[0].shape[0], -1)
     else:
         train[0] = train[0].view(train[0].shape[0], 1, 28, -1)
         validate[0] = validate[0].view(validate[0].shape[0], 1, 28, -1)
         test[0] = test[0].view(test[0].shape[0], 1, 28, -1)
+        #
+        # train[0] = train[0].view(train[0].shape[0], 784)
+        # validate[0] = validate[0].view(validate[0].shape[0], 784)
+        # test[0] = test[0].view(test[0].shape[0], 784)
 
     criterion = nn.NLLLoss()
     optimizer = optim.Adam(model.parameters(), lr=hyper_parameters['lr'])
@@ -108,6 +118,7 @@ if __name__ == '__main__':
                   criterion=criterion,
                   optimizer=optimizer,
                   hyper_params=hyper_parameters,
+                  fcn_config=fcn_config,
                   validate=True,
                   device=device,
                   use_tensorboard=cfg['use_tensorboard'])
