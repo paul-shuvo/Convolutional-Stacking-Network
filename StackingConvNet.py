@@ -569,6 +569,7 @@ class StackingConvNet:
         self.cfg["kernel_mode"] = config_parser.getboolean(config_section, "kernel_mode")
         self.cfg["kernelPCA_kernel_type"] = config_parser.get(config_section, "kernelPCA_kernel_type")
         self.cfg["max_iteration_ICA"] = config_parser.getint(config_section, "max_iteration_ICA")
+        self.cfg["max_iteration_FA"] = config_parser.getint(config_section, "max_iteration_FA")
         self.cfg["zero_pad"] = config_parser.getboolean(config_section, "zero_pad")
         self.cfg["convolutional_model_filename"] = config_parser.get(config_section, "convolutional_model_filename")
         self.cfg["convolutional_network_settings_filename"] = config_parser.get(config_section,

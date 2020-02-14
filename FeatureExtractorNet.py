@@ -1,5 +1,5 @@
 from StackingConvNet import StackingConvNet
-from sklearn.decomposition import PCA, KernelPCA, FastICA
+from sklearn.decomposition import PCA, KernelPCA, FastICA, FactorAnalysis
 import numpy as np
 
 
@@ -17,8 +17,8 @@ class FeatureExtractorNet(StackingConvNet):
         super().__init__(cfg_name, config_section)
 
         # Set the feature map generator functions
-        self.train_feature_extractors = {'PCA': self.train_PCA, 'Kernel_PCA': self.train_Kernel_PCA, 'ICA': self.train_ICA}
-        self.extract_features = {'PCA': self.extract_PCA_features, 'Kernel_PCA': self.extract_KPCA_features, 'ICA': self.extract_ICA_features}
+        self.train_feature_extractors = {'PCA': self.train_PCA, 'Kernel_PCA': self.train_Kernel_PCA, 'ICA': self.train_ICA, 'FA': self.train_FA}
+        self.extract_features = {'PCA': self.extract_PCA_features, 'Kernel_PCA': self.extract_KPCA_features, 'ICA': self.extract_ICA_features, 'FA': self.extract_FA_features}
 
     # **********
     def extract_PCA_features(self, model, feature_patches, components, zero_pad, feature_map_shape, stride):
@@ -234,6 +234,74 @@ class FeatureExtractorNet(StackingConvNet):
 
         return ica, extracted_features
 
+    # **********
+    def extract_FA_features(self, model, feature_patches, components, zero_pad, feature_map_shape, stride):
+        """
+        Function to extract features using Factor Analysis (FA).
+        :param model: A trained scikit-learn FA object
+        :param feature_patches: Input feature patches to compute FA on them [patches, height, width]
+        :param components: The requested components (list)
+        :param zero_pad: Boolean parameter to indicate if feature maps are zero-padded
+        :param feature_map_shape: Shape of the feature map [batch, height, width]
+        :param stride: Network stride
+        :return: Extracted feature map [batch, height, width, channel]
+        """
+
+        # Check if kernel mode is not enabled while FA is the function to extract features.
+        assert not self.cfg["kernel_mode"], 'Kernel mode is not supported for FA.'
+
+        # Reshape the the input data to a 2D array (an array of 1D input data)
+        feature_patches_shape = feature_patches.shape
+        feature_patches = np.reshape(feature_patches,
+                                     (feature_patches.shape[0], feature_patches.shape[1] * feature_patches.shape[2]))
+
+        # Extract the new feature maps via FA
+        extracted_features = model.transform(feature_patches)
+
+        # Reshape the extracted feature map from [batch * height * width, channel] to [batch, height, width, channel]
+        extracted_features = reshape_feature_vector(extracted_features, feature_patches_shape, zero_pad,
+                                                    feature_map_shape, stride)
+
+        # Extract the requested components
+        extracted_features = extracted_features[:, :, :, components]
+
+        return extracted_features
+
+    # **********
+    def train_FA(self, components, feature_patches, zero_pad, feature_map_shape, stride, **kwargs):
+        """
+        Function to compute Factor Analysis (FA) of input patches.
+        :param components: The requested components (list)
+        :param feature_patches: Input feature patches to compute FA on them [patches, height, width]
+        Warning: This function modifies the feature_patches argument!
+        :param zero_pad: Boolean parameter to indicate if feature maps are zero-padded
+        :param feature_map_shape: Shape of the feature map [batch, height, width]
+        :param stride: Stride used in generation of patches
+        :return: FA feature extractor (a single object) and extracted features [batch, height, width, channel].
+        """
+
+        # Check if kernel mode is not enabled while FA is the function to extract features.
+        assert not self.cfg["kernel_mode"], 'Kernel mode is not supported for FA.'
+
+        # Define an instance of FA dimensionality reduction
+        fa = FactorAnalysis(n_components=max(components) + 1, copy=False, max_iter=self.cfg["max_iteration_FA"])
+
+        # Reshape the the input data to a 2D array (an array of 1D input data)
+        feature_patches_shape = feature_patches.shape
+        feature_patches = np.reshape(feature_patches,
+                                     (feature_patches.shape[0], feature_patches.shape[1] * feature_patches.shape[2]))
+
+        # Fit the Factor Analysis model and extract the new feature maps
+        extracted_features = fa.fit_transform(feature_patches)
+
+        # Reshape the extracted patch from [batch * height * width, channel] to [batch, height, width, channel]
+        extracted_features = reshape_feature_vector(extracted_features, feature_patches_shape, zero_pad,
+                                                    feature_map_shape, stride)
+
+        # Extract the requested components
+        extracted_features = extracted_features[:, :, :, components]
+
+        return fa, extracted_features
 
 # *******************
 def reshape_feature_vector(feature_vector, feature_patches_shape, zero_pad, feature_map_shape, stride):
