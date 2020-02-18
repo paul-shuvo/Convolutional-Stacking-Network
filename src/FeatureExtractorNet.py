@@ -1,4 +1,4 @@
-from StackingConvNet import StackingConvNet
+from src.StackingConvNet import StackingConvNet
 from sklearn.decomposition import PCA, KernelPCA, FastICA, FactorAnalysis
 import numpy as np
 
