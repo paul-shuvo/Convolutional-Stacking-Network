@@ -21,8 +21,8 @@ import os
 from torchsummary import summary
 
 # import from python files
-import models
-from train import Train
+import nn_models
+from nn_train import NNTrain
 
 # set flags / seeds
 # to keep experiments reproducible
@@ -36,13 +36,13 @@ torch.backends.cudnn.benchmark = True
 
 
 # Start with main code
-if __name__ == '__main__':
+def nn_pipeline(config_file, train_transformed_data=False):
     # make sure we use gpu if it's available
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # Load the configuration of feature extractors
-    # of PCA/ICA from 'config.yml' file
-    with open("config.yml", 'r') as ymlfile:
+    # of PCA/ICA from 'config_nn.yml' file
+    with open(os.path.join("./Config/", config_file), 'r') as ymlfile:
         cfg = yaml.load(ymlfile, Loader=yaml.FullLoader)
         cfg = cfg['default']
 
@@ -60,22 +60,22 @@ if __name__ == '__main__':
     # feeding to the model. If 'train_transformed_data'
     # is true then use the transformed PCA/ICA data
     # else use the original dataset
-    if cfg['train_transformed_data']:
+    if train_transformed_data:
         with open(dataset_path['transformed'][0], 'rb') as f:
             X, y = pickle.load(f)
             y = np.array([v.replace(',', '') for v in y], dtype=np.float32)
         with open(dataset_path['transformed'][1], 'rb') as f:
             X_, y_ = pickle.load(f)
             y_ = np.array([v.replace(',', '') for v in y_], dtype=np.float32)
-        X = np.concatenate((X, X_), axis=0)
-        y = np.concatenate((y, y_), axis=0)
-        model = models.FCNCustom(X.shape[-1], fcn_config)
+        # X = np.concatenate((X, X_), axis=0)
+        # y = np.concatenate((y, y_), axis=0)
+        model = nn_models.FCNCustom(X.shape[-1], fcn_config)
     else:
         with open(dataset_path['original'][0], 'rb') as f:
             X, y = pickle.load(f)
             # X = np.divide(X, 255)
             y = np.array([v.replace(',', '') for v in y], dtype=np.float32)
-        model = models.FeatureExtractorConvNet(feature_extractor_net_cfg, fcn_config, device)
+        model = nn_models.FeatureExtractorConvNet(feature_extractor_net_cfg, fcn_config, device)
 
 
 
@@ -94,7 +94,7 @@ if __name__ == '__main__':
     validate = [X[validate_idx.indices], y[validate_idx.indices]]
     test = [X[test_idx.indices], y[test_idx.indices]]
 
-    if cfg['train_transformed_data']:
+    if train_transformed_data:
         train[0] = train[0].view(train[0].shape[0], -1)
         unique, counts = np.unique(train[1], return_counts=True)
         print(dict(zip(unique, counts)))
@@ -112,7 +112,7 @@ if __name__ == '__main__':
     criterion = nn.NLLLoss()
     optimizer = optim.Adam(model.parameters(), lr=hyper_parameters['lr'])
 
-    train = Train(data=[train, validate],
+    train = NNTrain(data=[train, validate],
                   data_params=dataset_params,
                   model=model,
                   criterion=criterion,
@@ -123,4 +123,3 @@ if __name__ == '__main__':
                   device=device,
                   use_tensorboard=cfg['use_tensorboard'])
     train.fit()
-

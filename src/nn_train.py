@@ -1,17 +1,17 @@
 # TODO: Make a function for Tensorboard summary writer
-# FIXME: Fix the warning on the python file import i.e. 'data_transform.py'
+# FIXME: Fix the warning on the python file import i.e. 'nn_utils.py'
 
 import torch
 from torch.autograd import Variable
 import numpy as np
 from torch.utils.data import DataLoader
-from data_transform import DataTransform
+from nn_utils import DataTransform
 import torch.nn as nn
 import os
 from torch.utils.tensorboard import SummaryWriter
 
 
-class Train:
+class NNTrain:
     def __init__(self,
                  data,
                  data_params,

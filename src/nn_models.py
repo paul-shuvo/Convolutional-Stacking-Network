@@ -28,7 +28,7 @@ class FeatureExtractorConvNet(nn.Module):
 
         self.net = nn.Sequential(*conv_blocks)
         self.net.to(device)
-        _, final_layer_params = summary(self.net, (1, 28, 28), print=False)
+        final_layer_params = summary(self.net, (1, 28, 28), print=False)
         fc_input_shape = np.prod(final_layer_params['output_shape'][1:])
         self.ext_net = FCNCustom(fc_input_shape, fcn_config)
 

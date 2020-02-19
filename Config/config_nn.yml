@@ -1,5 +1,4 @@
 default:
-  train_transformed_data: False
   use_tensorboard: True
   fcn_config: [1024, 512, 256, 128, 64, 10]
   hyper_parameters:
@@ -13,15 +12,15 @@ default:
       test: 0.7
     path:
       original:
-        - D:\Programming Projects\python projects\EclecticNet\Datasets\Fashion-MNIST.pckl
+        - ./Datasets/Fashion-MNIST.pckl
       transformed:
-        - D:\Programming Projects\python projects\EclecticNet\Datasets\Converted_Datasets\Converted_Training_Set_36_1764_3x3_30k.pckl
-        - D:\Programming Projects\python projects\EclecticNet\Datasets\Converted_Datasets\Converted_Test_Set_36_1764_3x3_30k.pckl
+        - ./Datasets/Converted_Datasets/Converted_Training_Set.pckl
+        - ./Datasets/Converted_Datasets/Converted_Test_Set.pckl
     parameters:
       batch_size: 1000
       shuffle: True
     model:
-      path: D:\Programming Projects\python projects\EclecticNet\Training
+      path: ./src/
   feature_extractor_net_config:
     n_feature_maps: [2, 2, 2]
     kernel_sizes: [[[5,5]], [[5,5]], [[5,5]]]

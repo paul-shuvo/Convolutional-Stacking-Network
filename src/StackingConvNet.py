@@ -56,7 +56,7 @@ class StackingConvNet:
         logging.getLogger('tensorflow').setLevel(logging.WARN)
 
     # **********
-    def train(self):
+    def fit(self):
         """
         Function to train the Stacking Convolutional Network.
         """
