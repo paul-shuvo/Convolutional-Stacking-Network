@@ -8,7 +8,7 @@ This network functions similar to a convolutional neural network (CNN) with the 
 More detailed descriptions are added after the pending papers are published.
 
 ## The code
-The Convolutional Stacking Network is written in Python, by utilizing the Tensorflow, Pytorch, and Scikit-learn libraries.
+The Convolutional Stacking Network is written in Python, by utilizing the Tensorflow, PyTorch, and Scikit-learn libraries.
 
 The source code is placed under the *src* folder. To train and subsequently test a network, run the *Run.py* file. The configuration files are located under the *Config* directory. To set the properties of the network, training, and testing, modify the configuration files accordingly. The datasets can be placed under the *Datasets* folder. The extracted test data from the original dataset are saved under the *Datasets/Test_Data* directory. The trained models are saved in the *Model* folder. The *Patches* folder can be used to store the image patches during the internal sliding of the kernels over the feature maps.
 
