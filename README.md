@@ -3,7 +3,7 @@
 A deep convolutional network that consists of layers of stacked feature extractors. The feature extractors are not necessarily neural network.
 
 ## Description
-This network functions similar to a convolutional neural network (CNN) with the difference that the layers are not just made of neural network and all the layers are not trained in repetitions of hollistic backward propagation of errors (backpropagation). Instead, feature extractors are trained layer by layer from the input toward the later layers. The convolution operation, however, is similar to conventional CNNs, with the exception that other types of feature extractors, such as independent component analysis (ICA) and principal component analysis (PCA), are used instead. The convolutional network is followed by a classifier or a regressor as is common. Currently, we are using a fully connected neural network for that.
+This network functions similar to a convolutional neural network (CNN) with the difference that the layers are not just made of neural network and all the layers are not trained in repetitions of holistic backward propagation of errors (backpropagation). Instead, feature extractors are trained layer by layer from the input toward the later layers. The convolution operation, however, is similar to conventional CNNs, with the exception that other types of feature extractors, such as independent component analysis (ICA) and principal component analysis (PCA), are used instead. The convolutional network is followed by a classifier or a regressor as is common. Currently, we are using a fully connected neural network for that.
 
 More detailed descriptions are added after the pending papers are published.
 
